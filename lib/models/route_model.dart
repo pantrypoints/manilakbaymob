@@ -1,39 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
-enum TransportType { jeepney, bus, tricycle, uvExpress }
+enum TransportType { jeepney, bus, uvExpress, tricycle, bicycle }
 
+/// A polyline-based transport route (jeepney, bus, UV express)
 class TransportRoute {
   final String id;
   final String name;
-  final String shortName;
   final TransportType type;
   final List<LatLng> points;
-  final String description;
-  final String fare;
+  final Color? overrideColor; // from JSON color field
 
   const TransportRoute({
     required this.id,
     required this.name,
-    required this.shortName,
     required this.type,
     required this.points,
-    required this.description,
-    required this.fare,
+    this.overrideColor,
   });
 }
 
-class TransportTypeInfo {
-  final TransportType type;
-  final String label;
-  final Color color;
-  final IconData icon;
+/// A point marker for tricycle terminals
+class TricycleTerminal {
+  final String name;
+  final LatLng position;
+  final String baseFare;
+  final String operatingHours;
+  final String description;
+  final String address;
 
-  const TransportTypeInfo({
+  const TricycleTerminal({
+    required this.name,
+    required this.position,
+    required this.baseFare,
+    required this.operatingHours,
+    required this.description,
+    required this.address,
+  });
+}
+
+/// A point marker for bicycle parking
+class BicycleParking {
+  final String name;
+  final LatLng position;
+  final String type;
+  final int capacity;
+  final bool covered;
+  final String fee;
+  final String operatingHours;
+  final String description;
+
+  const BicycleParking({
+    required this.name,
+    required this.position,
     required this.type,
-    required this.label,
-    required this.color,
-    required this.icon,
+    required this.capacity,
+    required this.covered,
+    required this.fee,
+    required this.operatingHours,
+    required this.description,
   });
 }
 
@@ -46,16 +71,25 @@ enum SidewalkWidth {
   impassable, // no sidewalk / blocked — black
 }
 
+SidewalkWidth sidewalkWidthFromMeters(double m) {
+  if (m >= 5) return SidewalkWidth.wide;
+  if (m >= 3) return SidewalkWidth.moderate;
+  if (m >= 1.2) return SidewalkWidth.narrow;
+  if (m > 0) return SidewalkWidth.veryNarrow;
+  return SidewalkWidth.impassable;
+}
+
 class SidewalkSegment {
   final String id;
-  final List<LatLng> points;
+  final String name;
+  final double widthM;
   final SidewalkWidth width;
-  final String description;
+  final List<LatLng> points;
 
-  const SidewalkSegment({
+  SidewalkSegment({
     required this.id,
+    required this.name,
+    required this.widthM,
     required this.points,
-    required this.width,
-    required this.description,
-  });
+  }) : width = sidewalkWidthFromMeters(widthM);
 }

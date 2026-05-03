@@ -1,49 +1,57 @@
 import 'package:flutter/material.dart';
 
+/// Color palette aligned with the Svelte web version of Manilakbay.
+/// The map uses a light CartoDB tile — UI chrome is light/white with
+/// amber/gold brand accents.
 class AppColors {
-  // Primary palette
-  static const Color navyBlue = Color(0xFF0A2463);
-  static const Color royalBlue = Color(0xFF1E50A0);
-  static const Color skyBlue = Color(0xFF4A90D9);
-  static const Color lightYellow = Color(0xFFFFF3B0);
-  static const Color gold = Color(0xFFD4A017);
-  static const Color brightGold = Color(0xFFFFCC00);
-  static const Color warmCream = Color(0xFFFFFBF0);
+  // Brand
+  static const Color amber = Color(0xFFF59E0B);       // jeepney, brand accent
+  static const Color amberDark = Color(0xFFB45309);
 
-  // Backgrounds
-  static const Color background = Color(0xFF0D1B3E);
-  static const Color surface = Color(0xFF162447);
-  static const Color cardSurface = Color(0xFF1E3461);
+  // Transport route colors (matches Svelte TRANSPORT_COLORS)
+  static const Color jeepneyColor  = Color(0xFFF59E0B); // amber
+  static const Color busColor      = Color(0xFFEF4444); // red
+  static const Color uvColor       = Color(0xFF8B5CF6); // purple
+  static const Color tricycleColor = Color(0xFF10B981); // emerald
+  static const Color bicycleColor  = Color(0xFF3B82F6); // blue
 
-  // Route colors
-  static const Color jeepneyColor = Color(0xFFFFCC00); // gold
-  static const Color busColor = Color(0xFF4A90D9);     // sky blue
-  static const Color tricycleColor = Color(0xFFFF8C42); // orange accent
-  static const Color uvExpressColor = Color(0xFF7FD1AE); // teal-green
+  // Sidewalk colors (matches Svelte SIDEWALK_COLOR_MAP)
+  static const Color swWide       = Color(0xFF22C55E); // green  ≥5m
+  static const Color swModerate   = Color(0xFFEAB308); // yellow 3–5m
+  static const Color swNarrow     = Color(0xFFF97316); // orange 1.2–3m
+  static const Color swVeryNarrow = Color(0xFFEF4444); // red    <1.2m
+  static const Color swImpassable = Color(0xFF171717); // near-black
+
+  // UI surface (light)
+  static const Color surface      = Color(0xFFFFFFFF);
+  static const Color surfaceAlpha = Color(0xF2FFFFFF); // ~95% white
+  static const Color border       = Color(0x1A000000); // 10% black
+  static const Color divider      = Color(0x14000000); // 8% black
 
   // Text
-  static const Color textPrimary = Color(0xFFFFFBF0);
-  static const Color textSecondary = Color(0xFFB8C9E8);
-  static const Color textMuted = Color(0xFF6B85A8);
+  static const Color textPrimary   = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF374151);
+  static const Color textMuted     = Color(0xFF9CA3AF);
+  static const Color textLabel     = Color(0xFF6B7280);
+
+  // Zoom badge states
+  static const Color zoomLockedBg   = Color(0xFFFFFBEB); // amber tint
+  static const Color zoomUnlockedBg = Color(0xFFF0FDF4); // green tint
+  static const Color zoomLockedText  = Color(0xFF92400E);
+  static const Color zoomUnlockedText = Color(0xFF166534);
 }
 
 class AppTheme {
   static ThemeData get theme => ThemeData(
         useMaterial3: true,
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.royalBlue,
-          secondary: AppColors.gold,
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.amber,
+          secondary: AppColors.bicycleColor,
           surface: AppColors.surface,
-          onPrimary: AppColors.textPrimary,
-          onSecondary: AppColors.navyBlue,
+          onPrimary: Colors.white,
           onSurface: AppColors.textPrimary,
         ),
-        scaffoldBackgroundColor: AppColors.background,
+        scaffoldBackgroundColor: const Color(0xFFE8E8E8),
         fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.navyBlue,
-          foregroundColor: AppColors.textPrimary,
-          elevation: 0,
-        ),
       );
 }

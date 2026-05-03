@@ -1,0 +1,22 @@
+{
+  "terminals": [
+    {
+      "name": "Baclaran Tricycle Terminal",
+      "lat": 14.446270782845307,
+      "lng": 120.99392497634507,
+      "base_fare": "₱20",
+      "operating_hours": "5:00 AM - 12:00 AM",
+      "description": "Main tricycle terminal near Baclaran Church and LRT Station. Serves routes to Pasay and Parañaque areas.",
+      "address": "Roxas Blvd, Baclaran, Parañaque"
+    },
+    {
+      "name": "Coastal Road Tricycle Terminal",
+      "lat": 14.443942800392293,
+      "lng": 120.99314359377507,
+      "base_fare": "₱25",
+      "operating_hours": "24 hours",
+      "description": "Tricycle terminal near Coastal Road entrance. Serves Don Galo, La Huerta, and San Dionisio areas.",
+      "address": "Coastal Road, Parañaque"
+    }
+  ]
+}

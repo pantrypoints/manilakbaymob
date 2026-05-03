@@ -1,121 +1,155 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:get/get.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/route_model.dart';
 import '../data/route_data.dart';
 import '../theme.dart';
+import 'dart:async';
 
-/// Zoom level (approx) at which the viewport is ~5km wide on a phone screen.
-/// flutter_map zoom 14 ≈ 1.5km wide on a 400px screen → zoom 13 ≈ 3km, zoom 12 ≈ 6km.
-/// We use 13.0 as a comfortable threshold for ~5km width.
-const double kRouteVisibleZoom = 13.0;
+
+/// Zoom ≥14 → viewport is roughly 2–3km wide → routes are legible.
+/// Matches the Svelte ROUTE_ZOOM_THRESHOLD = 14.
+const double kRouteVisibleZoom = 14.0;
 
 class MapController extends GetxController {
-  // Active transport type filters
-  final RxMap<TransportType, bool> activeFilters = {
-    TransportType.jeepney: true,
-    TransportType.bus: true,
-    TransportType.tricycle: true,
-    TransportType.uvExpress: true,
-  }.obs;
+  // ── Loading ────────────────────────────────────────────────────────────
+  final RxBool isLoading = true.obs;
 
-  // Sidewalk overlay toggle
+  // ── Layer toggles (matches Svelte defaults) ────────────────────────────
+  final RxBool showJeepney = true.obs;
+  final RxBool showBus = true.obs;
+  final RxBool showUV = true.obs;
+  final RxBool showTricycle = false.obs;
+  final RxBool showBicycle = false.obs;
   final RxBool showSidewalks = false.obs;
 
-  // Selected route for detail panel
-  final Rx<TransportRoute?> selectedRoute = Rx<TransportRoute?>(null);
+  // ── UI state ───────────────────────────────────────────────────────────
+  final RxBool showPanel = true.obs; // left controls panel
+  final RxDouble currentZoom = 15.0.obs;
 
-  // Show/hide legend
-  final RxBool showLegend = true.obs;
+  // Selected item for bottom sheet
+  final Rx<TransportRoute?> selectedRoute = Rx(null);
+  final Rx<TricycleTerminal?> selectedTricycle = Rx(null);
+  final Rx<BicycleParking?> selectedBicycle = Rx(null);
+  final Rx<SidewalkSegment?> selectedSidewalk = Rx(null);
 
-  // Current zoom level — updated from map camera callbacks
-  final RxDouble currentZoom = 11.5.obs;
-
-  /// True when the map is zoomed in enough to render route overlays.
   bool get isZoomedIn => currentZoom.value >= kRouteVisibleZoom;
 
-  // All routes
-  List<TransportRoute> get allRoutes => RouteData.allRoutes;
+  // ── Data accessors ─────────────────────────────────────────────────────
+  List<TransportRoute> get visibleJeepneys =>
+      isZoomedIn && showJeepney.value ? RouteData.jeepneyRoutes : [];
 
-  // All sidewalk segments
-  List<SidewalkSegment> get allSidewalks => RouteData.allSidewalks;
+  List<TransportRoute> get visibleBuses =>
+      isZoomedIn && showBus.value ? RouteData.busRoutes : [];
 
-  // Filtered visible routes (only when zoomed in)
-  List<TransportRoute> get visibleRoutes {
-    if (!isZoomedIn) return [];
-    return allRoutes.where((r) => activeFilters[r.type] == true).toList();
+  List<TransportRoute> get visibleUV =>
+      isZoomedIn && showUV.value ? RouteData.uvRoutes : [];
+
+  List<TricycleTerminal> get visibleTricycles =>
+      isZoomedIn && showTricycle.value ? RouteData.tricycleTerminals : [];
+
+  List<BicycleParking> get visibleBicycles =>
+      isZoomedIn && showBicycle.value ? RouteData.bicycleParkings : [];
+
+  List<SidewalkSegment> get visibleSidewalks =>
+      isZoomedIn && showSidewalks.value ? RouteData.sidewalks : [];
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadData();
   }
 
-  // Visible sidewalks (only when zoomed in AND toggle on)
-  List<SidewalkSegment> get visibleSidewalks {
-    if (!isZoomedIn || !showSidewalks.value) return [];
-    return allSidewalks;
+  Future<void> _loadData() async {
+    await RouteData.load();
+    isLoading.value = false;
   }
 
-  void onZoomChanged(double zoom) {
-    currentZoom.value = zoom;
+  // void onZoomChanged(double zoom) => currentZoom.value = zoom;
+  void togglePanel() => showPanel.value = !showPanel.value;
+
+  void selectRoute(TransportRoute r) {
+    _clearAll();
+    selectedRoute.value = r;
   }
 
-  void toggleFilter(TransportType type) {
-    activeFilters[type] = !(activeFilters[type] ?? true);
-    activeFilters.refresh();
+  void selectTricycle(TricycleTerminal t) {
+    _clearAll();
+    selectedTricycle.value = t;
   }
 
-  void toggleSidewalks() {
-    showSidewalks.value = !showSidewalks.value;
+  void selectBicycle(BicycleParking b) {
+    _clearAll();
+    selectedBicycle.value = b;
   }
 
-  void selectRoute(TransportRoute route) {
-    selectedRoute.value = route;
+  void selectSidewalk(SidewalkSegment s) {
+    _clearAll();
+    selectedSidewalk.value = s;
   }
 
-  void clearSelection() {
+  void clearSelection() => _clearAll();
+
+  void _clearAll() {
     selectedRoute.value = null;
+    selectedTricycle.value = null;
+    selectedBicycle.value = null;
+    selectedSidewalk.value = null;
   }
 
-  void toggleLegend() {
-    showLegend.value = !showLegend.value;
-  }
+  bool get hasSelection =>
+      selectedRoute.value != null ||
+      selectedTricycle.value != null ||
+      selectedBicycle.value != null ||
+      selectedSidewalk.value != null;
 
-  Color colorForType(TransportType type) {
+  // ── Color / icon helpers ───────────────────────────────────────────────
+  Color routeColor(TransportRoute r) =>
+      r.overrideColor ?? defaultColorForType(r.type);
+
+  Color defaultColorForType(TransportType type) {
     switch (type) {
       case TransportType.jeepney:
         return AppColors.jeepneyColor;
       case TransportType.bus:
         return AppColors.busColor;
+      case TransportType.uvExpress:
+        return AppColors.uvColor;
       case TransportType.tricycle:
         return AppColors.tricycleColor;
-      case TransportType.uvExpress:
-        return AppColors.uvExpressColor;
+      case TransportType.bicycle:
+        return AppColors.bicycleColor;
     }
   }
 
-  Color colorForSidewalk(SidewalkWidth width) {
-    switch (width) {
+  Color colorForSidewalk(SidewalkWidth w) {
+    switch (w) {
       case SidewalkWidth.wide:
-        return const Color(0xFF2ECC71);       // green
+        return AppColors.swWide;
       case SidewalkWidth.moderate:
-        return const Color(0xFFFFD600);       // yellow
+        return AppColors.swModerate;
       case SidewalkWidth.narrow:
-        return const Color(0xFFFF8C00);       // orange
+        return AppColors.swNarrow;
       case SidewalkWidth.veryNarrow:
-        return const Color(0xFFE53935);       // red
+        return AppColors.swVeryNarrow;
       case SidewalkWidth.impassable:
-        return const Color(0xFF1A1A1A);       // near-black
+        return AppColors.swImpassable;
     }
   }
 
-  String labelForSidewalk(SidewalkWidth width) {
-    switch (width) {
+  String labelForSidewalk(SidewalkWidth w) {
+    switch (w) {
       case SidewalkWidth.wide:
-        return '≥5m';
+        return '≥ 5m';
       case SidewalkWidth.moderate:
-        return '3–5m';
+        return '3m – 5m';
       case SidewalkWidth.narrow:
-        return '1.2–3m';
+        return '1.2m – 3m';
       case SidewalkWidth.veryNarrow:
-        return '<1.2m';
+        return '< 1.2m';
       case SidewalkWidth.impassable:
-        return 'Impassable';
+        return 'Impassable / None';
     }
   }
 
@@ -125,10 +159,12 @@ class MapController extends GetxController {
         return Icons.directions_bus_filled;
       case TransportType.bus:
         return Icons.airport_shuttle;
-      case TransportType.tricycle:
-        return Icons.electric_rickshaw;
       case TransportType.uvExpress:
         return Icons.directions_car;
+      case TransportType.tricycle:
+        return Icons.electric_rickshaw;
+      case TransportType.bicycle:
+        return Icons.directions_bike;
     }
   }
 
@@ -138,13 +174,184 @@ class MapController extends GetxController {
         return 'Jeepney';
       case TransportType.bus:
         return 'Bus';
-      case TransportType.tricycle:
-        return 'Tricycle';
       case TransportType.uvExpress:
         return 'UV Express';
+      case TransportType.tricycle:
+        return 'Tricycle Terminal';
+      case TransportType.bicycle:
+        return 'Bicycle Parking';
     }
   }
 
-  int routeCountForType(TransportType type) =>
-      allRoutes.where((r) => r.type == type).length;
+  double strokeWidthForType(TransportType type) {
+    switch (type) {
+      case TransportType.bus:
+        return 5.0;
+      case TransportType.uvExpress:
+        return 4.0;
+      case TransportType.jeepney:
+        return 4.0;
+      default:
+        return 3.0;
+    }
+  }
+
+  // ── Combined layer getters for performance ──────────────────────────
+
+  /// Combined polylines for all visible transport types
+  List<fm.Polyline> get allVisiblePolylines {
+    final polylines = <fm.Polyline>[];
+    if (!isZoomedIn) return polylines;
+
+    // Add route polylines
+    void addRoutes(List<TransportRoute> routes) {
+      for (final r in routes) {
+        polylines.add(
+          fm.Polyline(
+            points: r.points,
+            color: routeColor(r).withValues(alpha: 0.85),
+            strokeWidth: strokeWidthForType(r.type),
+            strokeCap: StrokeCap.round,
+            strokeJoin: StrokeJoin.round,
+          ),
+        );
+      }
+    }
+
+    if (showJeepney.value) addRoutes(visibleJeepneys);
+    if (showBus.value) addRoutes(visibleBuses);
+    if (showUV.value) addRoutes(visibleUV);
+
+    // Add sidewalk polylines
+    if (showSidewalks.value) {
+      for (final s in visibleSidewalks) {
+        polylines.add(
+          fm.Polyline(
+            points: s.points,
+            color: colorForSidewalk(s.width).withValues(alpha: 0.9),
+            strokeWidth: 5.0,
+            strokeCap: StrokeCap.round,
+            strokeJoin: StrokeJoin.round,
+          ),
+        );
+      }
+    }
+
+    return polylines;
+  }
+
+  /// Combined markers for all visible transport types
+  List<fm.Marker> get allVisibleMarkers {
+    final markers = <fm.Marker>[];
+    if (!isZoomedIn) return markers;
+
+    // Add route midpoint markers
+    void addRouteMarkers(List<TransportRoute> routes) {
+      for (final route in routes) {
+        final mid = route.points[route.points.length ~/ 2];
+        final color = routeColor(route);
+        markers.add(
+          fm.Marker(
+            point: mid,
+            width: 38,
+            height: 38,
+            child: GestureDetector(
+              onTap: () => selectRoute(route),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(iconForType(route.type), size: 16, color: color),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (showJeepney.value) addRouteMarkers(visibleJeepneys);
+    if (showBus.value) addRouteMarkers(visibleBuses);
+    if (showUV.value) addRouteMarkers(visibleUV);
+
+    // Add tricycle terminal markers
+    if (showTricycle.value) {
+      for (final t in visibleTricycles) {
+        markers.add(
+          fm.Marker(
+            point: t.position,
+            width: 32,
+            height: 32,
+            child: GestureDetector(
+              onTap: () => selectTricycle(t),
+              child: _buildEmojiMarker('🛺', AppColors.tricycleColor),
+            ),
+          ),
+        );
+      }
+    }
+
+    // Add bicycle parking markers
+    if (showBicycle.value) {
+      for (final b in visibleBicycles) {
+        markers.add(
+          fm.Marker(
+            point: b.position,
+            width: 32,
+            height: 32,
+            child: GestureDetector(
+              onTap: () => selectBicycle(b),
+              child: _buildEmojiMarker('🚲', AppColors.bicycleColor),
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+  // Helper to build emoji markers
+  Widget _buildEmojiMarker(String emoji, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(emoji, style: const TextStyle(fontSize: 14)),
+      ),
+    );
+  }
+
+  Timer? _zoomThrottle;
+  
+  void onZoomChanged(double zoom) {
+    // Throttle zoom updates to reduce rebuilds
+    _zoomThrottle?.cancel();
+    _zoomThrottle = Timer(const Duration(milliseconds: 150), () {
+      currentZoom.value = zoom;
+    });
+  }
+  
+  @override
+  void onClose() {
+    _zoomThrottle?.cancel();
+    super.onClose();
+  }
 }

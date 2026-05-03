@@ -1,0 +1,26 @@
+{
+  "parking": [
+    {
+      "name": "Makati Central Bicycle Parking",
+      "lat": 14.557247704387716,
+      "lng": 121.02669664172143,
+      "type": "Covered Rack",
+      "capacity": 24,
+      "covered": true,
+      "fee": "Free",
+      "operating_hours": "24/7",
+      "description": "Covered bicycle parking near Makati CBD. Well-lit area with CCTV."
+    },
+    {
+      "name": "San Antonio Village Bike Rack",
+      "lat": 14.553591678300013,
+      "lng": 121.0183251043356,
+      "type": "Open Rack",
+      "capacity": 12,
+      "covered": false,
+      "fee": "₱10/hour",
+      "operating_hours": "6:00 AM - 10:00 PM",
+      "description": "Open-air bicycle rack near public market. Convenient for short stops."
+    }
+  ]
+}
